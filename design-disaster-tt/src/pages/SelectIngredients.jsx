@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -37,15 +37,17 @@ const INGREDIENTS = [
 /* ── game tuning ── */
 const TOTAL_SPAWNS = 25;
 const BOMB_COUNT = 4;
-const SPAWN_MS = 1100;
-const BASE_SPEED = 2.5;
-const BASKET_SPEED = 7;
+const SPAWN_MS = 750;
+const BASE_SPEED = 4.5;
+const BASKET_SPEED = 9;
 const ITEM_W = 70;
 const ITEM_H = 70;
 const BASKET_W = 130;
 const BASKET_H = 90;
 const INVERT_CYCLE = 11000; // full cycle length
 const INVERT_ON = 8000; // inverted portion of cycle
+
+const FONT = '"Comic Sans MS", "Chalkboard SE", "Comic Neue", cursive';
 
 const fallbackChef = {
   id: "indian",
@@ -287,8 +289,8 @@ function SelectIngredients() {
           y: -ITEM_H,
           speed:
             BASE_SPEED +
-            Math.random() * 1.5 +
-            spawnIdxRef.current * 0.06,
+            Math.random() * 2 +
+            spawnIdxRef.current * 0.12,
           caught: false,
           missed: false,
         });
@@ -395,13 +397,13 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
   };
 
   /* ════════════ TRANSITION SEQUENCER ════════════ */
-  const startTransition = () => {
+  const startTransition = useCallback(() => {
     setPhase("transition");
     setTransStep(0);
     setTimeout(() => setTransStep(1), 1800);
     setTimeout(() => setTransStep(2), 3500);
     setTimeout(() => setPhase("final"), 5500);
-  };
+  }, []);
 
   /* ════════════ DERIVED VALUES ════════════ */
   const basketTop = areaRef.current
@@ -421,8 +423,8 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
     <div ref={areaRef} className="fixed inset-0 overflow-hidden select-none">
       <style>{KEYFRAMES}</style>
 
-      {/* ─── BG image (not shown during transition/final) ─── */}
-      {phase !== "transition" && phase !== "final" && (
+      {/* ─── BG image (only during countdown/playing/review) ─── */}
+      {!["transition", "final", "loading", "result"].includes(phase) && (
         <img
           src={BG_URL}
           alt=""
@@ -432,28 +434,28 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ COUNTDOWN ═══════════════════ */}
       {phase === "countdown" && (
-        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
-          <p className="text-amber-400 text-lg font-bold mb-2 tracking-wider">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
+          style={{ background: 'rgba(44, 24, 16, 0.88)', fontFamily: FONT }}>
+          <p style={{ color: '#f4e04d', fontSize: '1.3rem', fontWeight: 700, letterSpacing: '1px', marginBottom: 6 }}>
             🛒 Catch the pizza ingredients!
           </p>
-          <p className="text-white/80 text-sm mb-6">
-            Use <kbd className="bg-white/20 px-2 py-0.5 rounded text-amber-300 font-mono">←</kbd>{" "}
-            <kbd className="bg-white/20 px-2 py-0.5 rounded text-amber-300 font-mono">→</kbd> arrow
-            keys to move the basket
+          <p style={{ color: '#fff', fontSize: '0.9rem', marginBottom: 20, opacity: 0.85 }}>
+            Use <span style={{ background: '#5a3318', padding: '2px 10px', borderRadius: 8, color: '#f4e04d', fontWeight: 700, border: '2px solid #c5993a' }}>←</span>{" "}
+            <span style={{ background: '#5a3318', padding: '2px 10px', borderRadius: 8, color: '#f4e04d', fontWeight: 700, border: '2px solid #c5993a' }}>→</span> to move basket
           </p>
           <div
-            className="text-[120px] font-black text-white drop-shadow-2xl"
-            style={{ animation: "kf-pulse 0.8s ease-in-out infinite" }}
+            style={{ fontSize: 120, fontWeight: 900, color: '#f4e04d', textShadow: '4px 4px 0 #b45309', animation: 'kf-pulse 0.8s ease-in-out infinite' }}
           >
             {countNum || "GO!"}
           </div>
-          <p className="text-red-400 text-sm mt-8 font-bold animate-pulse">
-            ⚠️ WARNING: Controls may be... unreliable ⚠️
-          </p>
-          <p className="text-red-300/60 text-xs mt-2">
-            🚫 Watch out for BOMBS — they&apos;ll destroy everything you
-            collected!
-          </p>
+          <div style={{ marginTop: 30, background: '#7f1d1d', border: '3px solid #ef4444', borderRadius: 16, padding: '10px 24px', textAlign: 'center' }}>
+            <p style={{ color: '#fca5a5', fontSize: '0.9rem', fontWeight: 800 }}>
+              ⚠️ Controls may be... unreliable ⚠️
+            </p>
+            <p style={{ color: '#fca5a5', fontSize: '0.75rem', marginTop: 4, opacity: 0.7 }}>
+              🚫 BOMBS destroy everything you collected!
+            </p>
+          </div>
         </div>
       )}
 
@@ -461,21 +463,29 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
       {phase === "playing" && (
         <>
           {/* HUD – top-left */}
-          <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl text-white text-sm font-bold flex items-center gap-3 z-20">
-            <span>🧺 {collected.length}</span>
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-black transition-colors ${
-                inverted
-                  ? "bg-red-600 animate-pulse"
-                  : "bg-green-600"
-              }`}
-            >
-              {inverted ? "🔀 INVERTED" : "✅ NORMAL"}
-            </span>
+          <div className="absolute top-3 left-3 z-20 flex items-center gap-2"
+            style={{ fontFamily: FONT }}>
+            <div style={{ background: '#5a3318', border: '3px solid #c5993a', borderRadius: 14, padding: '6px 14px', color: '#f4e04d', fontWeight: 800, fontSize: '0.9rem', boxShadow: '0 3px 0 #3d200e' }}>
+              🧺 {collected.length}
+            </div>
+            <div style={{
+              background: inverted ? '#991b1b' : '#166534',
+              border: `3px solid ${inverted ? '#ef4444' : '#22c55e'}`,
+              borderRadius: 14,
+              padding: '6px 12px',
+              color: '#fff',
+              fontWeight: 900,
+              fontSize: '0.7rem',
+              boxShadow: `0 3px 0 ${inverted ? '#7f1d1d' : '#14532d'}`,
+              animation: inverted ? 'kf-pulse 1s infinite' : 'none',
+            }}>
+              {inverted ? '🔀 INVERTED' : '✅ NORMAL'}
+            </div>
           </div>
 
           {/* HUD – top-right */}
-          <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-xl text-white text-xs font-bold z-20">
+          <div className="absolute top-3 right-3 z-20"
+            style={{ fontFamily: FONT, background: '#5a3318', border: '3px solid #c5993a', borderRadius: 14, padding: '6px 14px', color: '#f4e04d', fontWeight: 800, fontSize: '0.75rem', boxShadow: '0 3px 0 #3d200e' }}>
             {spawnIdxRef.current}/{TOTAL_SPAWNS} items
           </div>
 
@@ -505,12 +515,16 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
                 }}
               />
               <span
-                className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded"
+                className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap"
                 style={{
-                  backgroundColor: it.data.isBomb
-                    ? "rgba(239,68,68,0.85)"
-                    : "rgba(0,0,0,0.65)",
-                  color: "white",
+                  fontFamily: FONT,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: 8,
+                  border: it.data.isBomb ? '2px solid #ef4444' : '2px solid #c5993a',
+                  background: it.data.isBomb ? '#991b1b' : '#5a3318',
+                  color: it.data.isBomb ? '#fca5a5' : '#f4e04d',
                 }}
               >
                 {it.data.isBomb ? "💣 BOMB" : it.data.name}
@@ -558,7 +572,18 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
               className="absolute top-1/3 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
               style={{ animation: "kf-bombMsg 1.2s ease-out forwards" }}
             >
-              <p className="text-red-400 text-2xl font-black text-center bg-black/80 px-6 py-3 rounded-xl border-2 border-red-500 shadow-xl">
+              <p style={{
+                fontFamily: FONT,
+                fontSize: '1.5rem',
+                fontWeight: 900,
+                color: '#fca5a5',
+                textAlign: 'center',
+                background: '#7f1d1d',
+                border: '4px solid #ef4444',
+                borderRadius: 20,
+                padding: '12px 28px',
+                boxShadow: '0 6px 0 #991b1b',
+              }}>
                 💣 BOOM! ALL ITEMS LOST! 💣
               </p>
             </div>
@@ -568,33 +593,40 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ REVIEW ═══════════════════ */}
       {phase === "review" && (
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10">
-          <h2 className="text-3xl font-black text-amber-300 mb-6 drop-shadow-lg">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-10"
+          style={{ background: 'rgba(44, 24, 16, 0.92)', fontFamily: FONT }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f4e04d', textShadow: '3px 3px 0 #b45309', marginBottom: 20 }}>
             🧺 Your Ingredient Haul
           </h2>
 
           {collected.length === 0 ? (
-            <p className="text-white text-xl mb-6 text-center leading-relaxed">
-              You caught... absolutely nothing.
-              <br />
-              Were the controls <em>that</em> bad? 🤦
-            </p>
+            <div style={{ background: '#5a3318', border: '4px solid #c5993a', borderRadius: 20, padding: '20px 32px', marginBottom: 20, textAlign: 'center', boxShadow: '0 4px 0 #3d200e' }}>
+              <p style={{ color: '#f4e04d', fontSize: '1.2rem', fontWeight: 700 }}>
+                You caught... absolutely nothing.
+              </p>
+              <p style={{ color: '#f4e04d', fontSize: '0.9rem', opacity: 0.7, marginTop: 6 }}>
+                Were the controls <em>that</em> bad? 🤦
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 mb-6 max-h-[50vh] overflow-y-auto px-2">
               {collected.map((item, i) => (
                 <div
                   key={i}
-                  className="bg-white/90 rounded-xl p-2 flex flex-col items-center shadow-lg"
                   style={{
+                    background: '#f9e4b7',
+                    border: '3px solid #c5993a',
+                    borderRadius: 16,
+                    padding: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    boxShadow: '0 3px 0 #b08630',
                     animation: `kf-fadeIn 0.3s ease-out ${i * 0.08}s both`,
                   }}
                 >
-                  <img
-                    src={item.img}
-                    alt={item.name}
-                    className="w-14 h-14 object-contain"
-                  />
-                  <span className="text-[11px] font-bold text-amber-900 mt-1 text-center leading-tight">
+                  <img src={item.img} alt={item.name} className="w-14 h-14 object-contain" />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#5a3318', marginTop: 4, textAlign: 'center', lineHeight: 1.2 }}>
                     {item.name}
                   </span>
                 </div>
@@ -604,16 +636,22 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
           <button
             onClick={sendToGemini}
-            className="
-              px-8 py-4 rounded-2xl font-black text-white text-lg
-              bg-linear-to-b from-green-400 to-green-600
-              border-4 border-green-700
-              shadow-[0_4px_0_#166534,0_4px_12px_rgba(0,0,0,0.4)]
-              hover:-translate-y-1 hover:shadow-[0_6px_0_#166534]
-              active:translate-y-1 active:shadow-[0_2px_0_#166534]
-              transition-all duration-150 cursor-pointer
-              animate-bounce
-            "
+            style={{
+              fontFamily: FONT,
+              padding: '14px 32px',
+              fontSize: '1.1rem',
+              fontWeight: 900,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+              border: '4px solid #166534',
+              borderRadius: 20,
+              boxShadow: '0 5px 0 #14532d',
+              cursor: 'pointer',
+              transition: 'transform 0.15s',
+              animation: 'kf-pulse 1.5s ease-in-out infinite',
+            }}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
           >
             🐀 Send to Chef Remy!
           </button>
@@ -622,17 +660,13 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ LOADING ═══════════════════ */}
       {phase === "loading" && (
-        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-10">
-          <div
-            className="text-7xl mb-4"
-            style={{ animation: "kf-wobble 0.5s ease-in-out infinite" }}
-          >
-            🐀
-          </div>
-          <p className="text-amber-300 text-xl font-bold animate-pulse">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
+          style={{ background: '#2C1810', fontFamily: FONT }}>
+          <div style={{ fontSize: 80, animation: 'kf-wobble 0.5s ease-in-out infinite' }}>🐀</div>
+          <p style={{ color: '#f4e04d', fontSize: '1.3rem', fontWeight: 800, marginTop: 12, animation: 'kf-pulse 1s infinite' }}>
             Chef Remy is judging your choices...
           </p>
-          <p className="text-amber-500/50 text-sm mt-2 italic">
+          <p style={{ color: '#c5993a', fontSize: '0.8rem', marginTop: 8, opacity: 0.6, fontStyle: 'italic' }}>
             (This might hurt)
           </p>
         </div>
@@ -640,37 +674,55 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ GEMINI RESULT ═══════════════════ */}
       {phase === "result" && (
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10">
-          <div className="text-7xl mb-2">🐀</div>
-          <p className="text-amber-400 text-sm font-bold mb-3 tracking-wide">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-10"
+          style={{ background: 'rgba(44, 24, 16, 0.94)', fontFamily: FONT }}>
+          <div style={{ fontSize: 80, marginBottom: 4 }}>🐀</div>
+          <p style={{ color: '#c5993a', fontSize: '0.85rem', fontWeight: 800, letterSpacing: 1, marginBottom: 10 }}>
             Chef Remy says:
           </p>
 
           {/* Speech bubble */}
           <div
-            className="bg-white rounded-3xl p-6 max-w-lg shadow-2xl border-4 border-amber-400 relative"
-            style={{ animation: "kf-slideUp 0.6s ease-out" }}
+            style={{
+              position: 'relative',
+              background: '#f9e4b7',
+              border: '4px solid #c5993a',
+              borderRadius: 24,
+              padding: '24px 28px',
+              maxWidth: 480,
+              boxShadow: '0 6px 0 #b08630',
+              animation: 'kf-slideUp 0.6s ease-out',
+            }}
           >
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-12 border-r-12 border-b-16 border-l-transparent border-r-transparent border-b-amber-400" />
-            <p className="text-amber-900 text-lg leading-relaxed font-medium italic">
+            <div style={{ position: 'absolute', top: -14, left: '50%', marginLeft: -12, width: 0, height: 0, borderLeft: '12px solid transparent', borderRight: '12px solid transparent', borderBottom: '14px solid #c5993a' }} />
+            <div style={{ position: 'absolute', top: -9, left: '50%', marginLeft: -10, width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderBottom: '12px solid #f9e4b7' }} />
+            <p style={{ color: '#5a3318', fontSize: '1.1rem', lineHeight: 1.6, fontWeight: 600, fontStyle: 'italic' }}>
               &ldquo;{geminiText}&rdquo;
             </p>
-            <p className="text-right text-sm text-amber-600/70 mt-3 font-semibold">
+            <p style={{ textAlign: 'right', fontSize: '0.85rem', color: '#b08630', marginTop: 10, fontWeight: 700 }}>
               — Remy 🐀
             </p>
           </div>
 
           <button
             onClick={startTransition}
-            className="
-              mt-8 px-8 py-4 rounded-2xl font-black text-white text-lg
-              bg-linear-to-b from-amber-400 to-orange-600
-              border-4 border-orange-700
-              shadow-[0_4px_0_#9a3412,0_4px_12px_rgba(0,0,0,0.4)]
-              hover:-translate-y-1
-              active:translate-y-1
-              transition-all duration-150 cursor-pointer
-            "
+            style={{
+              fontFamily: FONT,
+              marginTop: 28,
+              padding: '14px 32px',
+              fontSize: '1.1rem',
+              fontWeight: 900,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #f4e04d 0%, #f39c12 50%, #e67e22 100%)',
+              border: '4px solid #b45309',
+              borderRadius: 20,
+              boxShadow: '0 5px 0 #9a3412',
+              cursor: 'pointer',
+              transition: 'transform 0.15s',
+              textShadow: '2px 2px 0 rgba(0,0,0,0.2)',
+            }}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
           >
             🍕 Make My Pizza Already!
           </button>
@@ -679,42 +731,34 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ TRANSITION ═══════════════════ */}
       {phase === "transition" && (
-        <div className="absolute inset-0 bg-black flex items-center justify-center z-10 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center z-10 overflow-hidden"
+          style={{ background: '#2C1810', fontFamily: FONT }}>
           {transStep === 0 && (
-            <div
-              className="text-center"
-              style={{ animation: "kf-zoomSpin 1.5s ease-in-out" }}
-            >
-              <div className="text-8xl mb-4">🍕</div>
-              <p className="text-white text-3xl font-black">
+            <div className="text-center" style={{ animation: 'kf-zoomSpin 1.5s ease-in-out' }}>
+              <div style={{ fontSize: 100 }}>🍕</div>
+              <p style={{ color: '#f4e04d', fontSize: '1.8rem', fontWeight: 900, textShadow: '3px 3px 0 #b45309', marginTop: 10 }}>
                 Firing up the oven...
               </p>
             </div>
           )}
           {transStep === 1 && (
-            <div
-              className="text-center"
-              style={{ animation: "kf-shake 0.4s infinite" }}
-            >
-              <div className="text-8xl mb-4">🔥💨🔥</div>
-              <p className="text-red-400 text-3xl font-black animate-pulse">
+            <div className="text-center" style={{ animation: 'kf-shake 0.4s infinite' }}>
+              <div style={{ fontSize: 100 }}>🔥💨🔥</div>
+              <p style={{ color: '#ef4444', fontSize: '1.8rem', fontWeight: 900, animation: 'kf-pulse 0.8s infinite', marginTop: 10 }}>
                 WAIT... SOMETHING WENT WRONG
               </p>
-              <p className="text-red-300/60 text-lg mt-2">
+              <p style={{ color: '#fca5a5', fontSize: '1rem', marginTop: 8, opacity: 0.6 }}>
                 The pizza... it&apos;s... transforming?!
               </p>
             </div>
           )}
           {transStep === 2 && (
-            <div
-              className="text-center"
-              style={{ animation: "kf-fadeIn 1s ease-out" }}
-            >
-              <div className="text-8xl mb-4">🇮🇳</div>
-              <p className="text-amber-300 text-2xl font-black">
+            <div className="text-center" style={{ animation: 'kf-fadeIn 1s ease-out' }}>
+              <div style={{ fontSize: 100 }}>🇮🇳</div>
+              <p style={{ color: '#f4e04d', fontSize: '1.6rem', fontWeight: 900, textShadow: '3px 3px 0 #b45309', marginTop: 10 }}>
                 INDIAN CHEF OVERRIDE ACTIVATED
               </p>
-              <p className="text-amber-200/60 text-base mt-2 italic">
+              <p style={{ color: '#c5993a', fontSize: '0.95rem', marginTop: 8, fontStyle: 'italic', opacity: 0.7 }}>
                 Chef Arjun has taken over the kitchen...
               </p>
             </div>
@@ -724,16 +768,18 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
 
       {/* ═══════════════════ FINAL — MASALA PAPAD REVEAL ═══════════════════ */}
       {phase === "final" && (
-        <div className="absolute inset-0 bg-linear-to-b from-orange-900 via-amber-800 to-yellow-700 flex flex-col items-center justify-center z-10 overflow-hidden">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 overflow-hidden"
+          style={{ background: '#2C1810', fontFamily: FONT }}>
           {/* confetti particles */}
           <div className="absolute inset-0 pointer-events-none">
             {confettiRef.current.map((c, i) => (
               <div
                 key={i}
-                className="absolute text-2xl"
+                className="absolute"
                 style={{
                   left: c.left,
-                  top: "-5%",
+                  top: '-5%',
+                  fontSize: 24,
                   animation: `kf-confetti ${c.duration} linear ${c.delay} infinite`,
                 }}
               >
@@ -746,27 +792,21 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
           <img
             src={chef.img}
             alt={chef.name}
-            className="w-36 h-36 rounded-full border-4 border-amber-400 object-cover shadow-2xl mb-3"
-            style={{ animation: "kf-bounceIn 0.8s ease-out" }}
+            style={{
+              width: 140, height: 140, borderRadius: '50%', objectFit: 'cover',
+              border: '5px solid #c5993a', boxShadow: '0 6px 0 #b08630',
+              marginBottom: 12, animation: 'kf-bounceIn 0.8s ease-out',
+            }}
           />
 
           {/* Title */}
-          <h1
-            className="text-3xl sm:text-4xl md:text-5xl font-black text-white text-center drop-shadow-2xl mb-1 px-4"
-            style={{ animation: "kf-bounceIn 1s ease-out 0.3s both" }}
-          >
+          <h1 style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)', fontWeight: 900, color: '#f4e04d', textShadow: '4px 4px 0 #b45309', textAlign: 'center', marginBottom: 2, animation: 'kf-bounceIn 1s ease-out 0.3s both' }}>
             {chef.emoji} HERE IS YOUR
           </h1>
-          <h1
-            className="text-5xl sm:text-6xl md:text-7xl font-black text-yellow-300 text-center drop-shadow-2xl mb-2"
-            style={{ animation: "kf-bounceIn 1s ease-out 0.5s both" }}
-          >
+          <h1 style={{ fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', fontWeight: 900, color: '#f39c12', textShadow: '5px 5px 0 #9a3412', textAlign: 'center', marginBottom: 4, animation: 'kf-bounceIn 1s ease-out 0.5s both' }}>
             MASALA PAPAD
           </h1>
-          <h2
-            className="text-2xl sm:text-3xl font-black text-amber-200 mb-4"
-            style={{ animation: "kf-bounceIn 1s ease-out 0.7s both" }}
-          >
+          <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 2rem)', fontWeight: 900, color: '#c5993a', marginBottom: 16, animation: 'kf-bounceIn 1s ease-out 0.7s both' }}>
             SIR! 🙏
           </h2>
 
@@ -774,35 +814,50 @@ If there are bizarre non-pizza items (bitter gourd, mango, bottle gourd, pasta, 
           <img
             src={PAPAD_URL}
             alt="Masala Papad"
-            className="w-44 h-44 sm:w-52 sm:h-52 object-contain drop-shadow-2xl mb-4"
-            style={{ animation: "kf-spinIn 1.2s ease-out 0.8s both" }}
+            style={{
+              width: 'clamp(160px, 30vw, 220px)', height: 'clamp(160px, 30vw, 220px)',
+              objectFit: 'contain', marginBottom: 16,
+              filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))',
+              animation: 'kf-spinIn 1.2s ease-out 0.8s both',
+            }}
           />
 
           {/* Tagline */}
-          <p
-            className="text-amber-200/80 text-sm sm:text-base italic text-center max-w-md px-6"
-            style={{ animation: "kf-fadeIn 1s ease-out 1.5s both" }}
-          >
-            You spent all that time catching pizza ingredients...
-            <br />
-            and Chef Arjun made you a Masala Papad.
-            <br />
-            <strong className="text-amber-100">Deal with it. 😎</strong>
-          </p>
+          <div style={{
+            background: '#5a3318', border: '4px solid #c5993a', borderRadius: 20,
+            padding: '16px 28px', maxWidth: 440, textAlign: 'center',
+            boxShadow: '0 4px 0 #3d200e', animation: 'kf-fadeIn 1s ease-out 1.5s both',
+          }}>
+            <p style={{ color: '#f9e4b7', fontSize: '0.9rem', lineHeight: 1.7, fontStyle: 'italic' }}>
+              You spent all that time catching pizza ingredients...
+              <br />
+              and Chef Arjun made you a Masala Papad.
+              <br />
+              <strong style={{ color: '#f4e04d' }}>Deal with it. 😎</strong>
+            </p>
+          </div>
 
           {/* Continue button */}
           <button
             onClick={() => navigate("/order-status")}
-            className="
-              mt-6 px-7 py-3 rounded-2xl font-bold text-white text-base
-              bg-linear-to-b from-amber-400 to-orange-500
-              border-3 border-amber-600
-              shadow-[0_4px_0_#b45309]
-              hover:-translate-y-0.5
-              active:translate-y-1
-              transition-all duration-150 cursor-pointer
-            "
-            style={{ animation: "kf-fadeIn 1s ease-out 2.2s both" }}
+            style={{
+              fontFamily: FONT,
+              marginTop: 24,
+              padding: '12px 28px',
+              fontSize: '1rem',
+              fontWeight: 900,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #f4e04d 0%, #f39c12 50%, #e67e22 100%)',
+              border: '4px solid #b45309',
+              borderRadius: 20,
+              boxShadow: '0 5px 0 #9a3412',
+              cursor: 'pointer',
+              textShadow: '2px 2px 0 rgba(0,0,0,0.2)',
+              transition: 'transform 0.15s',
+              animation: 'kf-fadeIn 1s ease-out 2.2s both',
+            }}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
           >
             Accept Your Fate →
           </button>
