@@ -1,9 +1,15 @@
+/**
+ * OrderMenu Page
+ * ---------------
+ * Entry point for the interactive chef word-game scene.
+ * Imports the animations CSS and delegates everything to GameController.
+ */
+
+import GameController from "./OrderMenu/GameController";
+import "./OrderMenu/animations.css";
+
 function OrderMenu() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-purple-900 to-blue-900">
-      <h1 className="text-4xl font-bold text-white">Order Menu</h1>
-    </div>
-  );
+  return <GameController />;
 }
 
 export default OrderMenu;
