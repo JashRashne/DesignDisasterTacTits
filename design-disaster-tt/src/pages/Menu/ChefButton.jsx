@@ -15,8 +15,8 @@
 
 import { useCallback } from "react";
 
-// ── Gemini API key (replace with your key) ──────────────────
-const GEMINI_API_KEY = "AIzaSyAuaghGnnOxuGA68HnaQgL35MINKm51az0";
+// ── Gemini API key (set VITE_GEMINI_API_KEY in .env) ────────
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY ?? "";
 
 // ── Strict food recognition prompt ──────────────────────────
 const PROMPT = `You are a strict food recognition classifier.

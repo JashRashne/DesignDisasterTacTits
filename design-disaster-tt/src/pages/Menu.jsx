@@ -15,6 +15,7 @@ import DrawingCanvas from "./Menu/DrawingCanvas";
 import IngredientPalette from "./Menu/IngredientPalette";
 import ChefButton from "./Menu/ChefButton";
 import ChefResult from "./Menu/ChefResult";
+import ConfirmButton from "./Menu/ConfirmButton";
 import "./Menu/menu.css";
 
 // Background image (open book)
@@ -150,6 +151,9 @@ function Menu() {
         loading={loading}
         onLoading={setLoading}
       />
+
+      {/* Nightmare confirm button — appears after Gemini result */}
+      <ConfirmButton visible={!!result && result !== "Unknown" && result !== "Error — try again"} />
     </div>
   );
 }

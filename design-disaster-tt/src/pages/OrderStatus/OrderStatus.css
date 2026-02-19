@@ -1,0 +1,65 @@
+/* ── OrderStatus – Animation-only CSS (layout is Tailwind) ── */
+
+/* Chef card glow pulse when matched */
+.os-chef-glow {
+  animation: chefGlow 1.4s ease-in-out infinite alternate;
+}
+@keyframes chefGlow {
+  from {
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.35),
+                0 0 20px rgba(251, 191, 36, 0.12);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.6),
+                0 0 40px rgba(251, 191, 36, 0.25);
+  }
+}
+
+/* Badge pop-in */
+.os-badge-pop {
+  animation: badgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes badgePop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* Transition overlay fade */
+.os-fade-in {
+  animation: osFade 0.5s ease both;
+}
+@keyframes osFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Transition chef zoom-bounce */
+.os-zoom-bounce {
+  animation: osZoom 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes osZoom {
+  0%   { transform: scale(0); }
+  65%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* Magnet pulse ring */
+.os-magnet-pulse {
+  animation: magnetPulse 1.2s ease-in-out infinite;
+}
+@keyframes magnetPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%      { transform: scale(1.25); opacity: 0; }
+}
+
+/* Grab flash */
+.os-grab-flash {
+  animation: grabFlash 0.4s ease-out forwards;
+}
+@keyframes grabFlash {
+  0%   { transform: scale(0.5); opacity: 1; }
+  50%  { transform: scale(1.3); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+

@@ -48,8 +48,8 @@ class DustCrumb {
     this.vx = vx;
     this.vy = vy;
     this.size = size;
-    this.friction = 0.985;      // gentle slowdown on the "table surface"
-    this.jitter  = 0.15;        // slight random wobble while sliding
+    this.friction = 0.88;       // HEAVY friction — crumbs grip the surface hard
+    this.jitter  = 0;           // no drifting — you MUST push them
     this.edgeFade = 1;          // fades only right at the edge (visual polish)
   }
   update(canvasW, canvasH) {
@@ -159,8 +159,8 @@ function DrawingCanvas({ brushColor, canvasRef, onStrokeMove, fanMode }) {
   // ═══════════════════════════════════════════════════════════
   const FAN_RADIUS = 32;           // pixel sampling radius around cursor
   const FAN_SAMPLE_STEP = 2;       // sample every N pixels (perf)
-  const FAN_PUSH_FORCE = 5;        // initial push strength
-  const FAN_EXISTING_PUSH = 1.8;   // force applied to already-loose crumbs nearby
+  const FAN_PUSH_FORCE = 3;        // initial push — just enough to dislodge
+  const FAN_EXISTING_PUSH = 2.5;   // force to push already-loose crumbs (must actively shove)
 
   const blowPixels = useCallback((pos, dx, dy) => {
     const cvs = canvasRef.current;
