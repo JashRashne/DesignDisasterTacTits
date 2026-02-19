@@ -14,9 +14,12 @@
  */
 
 import { useCallback } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ── Gemini API key (set VITE_GEMINI_API_KEY in .env) ────────
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY ?? "";
+const MODEL_NAME = "gemini-2.5-flash";
+const MAX_RETRIES = 3;
 
 // ── Strict food recognition prompt ──────────────────────────
 const PROMPT = `You are a strict food recognition classifier.
@@ -32,51 +35,62 @@ Do not explain.
 Do not add commentary.
 Be extremely strict.`;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRateLimitError = (error) => {
+  const status = error?.status;
+  const message = (error?.message ?? "").toLowerCase();
+  return status === 429 || message.includes("429") || message.includes("resource_exhausted");
+};
+
 function ChefButton({ canvasRef, onResult, loading, onLoading }) {
   const handleClick = useCallback(async () => {
     if (!canvasRef?.current) return;
+    if (!GEMINI_API_KEY) {
+      onResult("Missing VITE_GEMINI_API_KEY");
+      return;
+    }
+
     onLoading(true);
 
     try {
-      // Convert canvas to base64 PNG (strip data URL prefix)
       const dataUrl = canvasRef.current.toDataURL("image/png");
-      const base64  = dataUrl.replace(/^data:image\/png;base64,/, "");
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
 
-      // Build Gemini API request
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-      const body = {
-        contents: [
-          {
-            parts: [
-              { text: PROMPT },
-              {
-                inline_data: {
-                  mime_type: "image/png",
-                  data: base64,
-                },
-              },
-            ],
-          },
-        ],
+      const image = {
+        inlineData: {
+          data: base64,
+          mimeType: "image/png",
+        },
       };
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      let attempt = 0;
+      while (attempt <= MAX_RETRIES) {
+        try {
+          const result = await model.generateContent([PROMPT, image]);
+          const text = result?.response?.text()?.trim() || "Unknown";
+          onResult(text);
+          return;
+        } catch (error) {
+          if (!isRateLimitError(error) || attempt === MAX_RETRIES) {
+            throw error;
+          }
 
-      const json = await res.json();
-
-      // Extract text from response
-      const text =
-        json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ??
-        "Unknown";
-      onResult(text);
+          const backoffMs = 500 * 2 ** attempt + Math.floor(Math.random() * 300);
+          await sleep(backoffMs);
+          attempt += 1;
+        }
+      }
     } catch (err) {
       console.error("Gemini API error:", err);
-      onResult("Error — try again");
+      if (isRateLimitError(err)) {
+        onResult("Chef is busy right now. Try again in a few seconds.");
+      } else {
+        onResult("Error — try again");
+      }
     } finally {
       onLoading(false);
     }
